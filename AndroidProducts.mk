@@ -11,4 +11,4 @@ PRODUCT_MAKEFILES := \
 COMMON_LUNCH_CHOICES := \
     twrp_a12s-user \
     twrp_a12s-userdebug \
-    omni_a12s-eng
+    twrp_a12s-eng
