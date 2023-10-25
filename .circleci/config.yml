@@ -29,11 +29,7 @@ jobs:
       image: ubuntu-2204:current
     resource_class: large
 
-    steps:
-      - checkout
-      - run: git submodule sync
-      - run: git submodule update --init
-        
+    steps:        
       - run:
           name: Prepare environment
           command: |
@@ -110,6 +106,13 @@ jobs:
             repo init --depth=1 -u << pipeline.parameters.manifest-url >> -b << pipeline.parameters.manifest-branch >>
             repo sync -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
             
+            mkdir -p ${CIRCLE_WORKING_DIRECTORY}/<< pipeline.parameters.vendor-name >>/<< pipeline.parameters.device-name >>
+            
+      - run:
+          name: Checkout
+          command: |
+            git clone $CIRCLE_REPOSITORY_URL ${CIRCLE_WORKING_DIRECTORY}/<< pipeline.parameters.vendor-name >>/<< pipeline.parameters.device-name >>
+            
       - run:
           name: Setup cache
           command: |
@@ -125,7 +128,7 @@ jobs:
           name: Build
           no_output_timeout: "1h"
           command: |
-            cd ${CIRCLE_WORKING_DIRECTORY}
+            cd ${CIRCLE_WORKING_DIRECTORY}/<< pipeline.parameters.vendor-name >>/<< pipeline.parameters.device-name >>
             source build/envsetup.sh
 
             export USE_CCACHE=1
