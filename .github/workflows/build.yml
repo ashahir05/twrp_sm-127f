@@ -134,7 +134,6 @@ jobs:
       
       - name: Build
         run: |
-          cd ${GITHUB_WORKSPACE}/device/${{ github.event.inputs.vendor-name }}/${{ github.event.inputs.device-name }}
           source build/envsetup.sh
 
           export USE_CCACHE=1

@@ -128,7 +128,6 @@ jobs:
           name: Build
           no_output_timeout: "1h"
           command: |
-            cd ${CIRCLE_WORKING_DIRECTORY}/<< pipeline.parameters.vendor-name >>/<< pipeline.parameters.device-name >>
             source build/envsetup.sh
 
             export USE_CCACHE=1
