@@ -97,7 +97,7 @@ jobs:
             git config --global user.email "CI@xyz.com"
             git config --global color.ui true
 
-            mkdir ~/bin
+            mkdir -p ~/bin
             curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
             chmod a+x ~/bin/repo
             sudo ln -sf ~/bin/repo /usr/bin/repo
