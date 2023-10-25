@@ -1,0 +1,168 @@
+name: Build
+on:
+  workflow_dispatch:
+    inputs:
+      manifest-url:
+        required: true
+        default: "https://github.com/PitchBlackRecoveryProject/manifest_pb.git"
+      manifest-branch:
+        required: true
+        default: "android-12.1"
+      vendor-name:
+        required: true
+        default: "samsung"
+      device-name:
+        required: true
+        default: "a12s"
+      product:
+        required: true
+        default: "twrp"
+      build-type:
+        required: true
+        default: "eng"
+      target:
+        required: true
+        default: "recoveryimage"
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    if: github.event.repository.owner.id == github.event.sender.id
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: write
+
+    steps:
+      - name: Free disk space
+        uses: rokibhasansagar/slimhub_actions@main
+            
+      - name: Prepare environment
+        run: |
+          sudo apt update -y
+          sudo apt install -y linux-modules-extra-$(uname -r)
+          
+          sudo dd if=/dev/zero of=/swapfile bs=12MB count=1024
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
+          sudo modprobe zram
+          sudo zramctl /dev/zram0 --algorithm zstd --size 32G
+          sudo mkswap /dev/zram0
+          sudo swapon --priority 150 /dev/zram0
+          
+          sudo sysctl vm.swappiness=180
+          sudo sysctl vm.watermark_boost_factor=0
+          sudo sysctl vm.watermark_scale_factor=125
+          sudo sysctl vm.page-cluster=0
+          
+          sudo apt install -y \
+            gperf \
+            gcc-multilib \
+            gcc-10-multilib \
+            g++-multilib \
+            g++-10-multilib \
+            ccache \
+            libc6-dev \
+            lib32ncurses5-dev \
+            x11proto-core-dev \
+            libx11-dev \
+            tree \
+            lib32z-dev \
+            libgl1-mesa-dev \
+            libxml2-utils \
+            xsltproc \
+            bc \
+            openjdk-8-jdk \
+            lib32readline-dev \
+            lib32z1-dev \
+            liblz4-tool \
+            libncurses5-dev \
+            libncurses5 \
+            libtinfo5 \
+            libsdl1.2-dev \
+            libwxgtk3.0-gtk3-dev \
+            libxml2 \
+            lzop \
+            pngcrush \
+            schedtool \
+            squashfs-tools \
+            imagemagick \
+            libbz2-dev \
+            lzma \
+            ncftp \
+            qemu-user-static \
+            libstdc++-10-dev \
+            python2
+
+      - name: Prepare sources
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "CI@xyz.com"
+          git config --global color.ui true
+
+          mkdir ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          sudo ln -sf ~/bin/repo /usr/bin/repo
+
+          repo init --depth=1 -u ${{ github.event.inputs.manifest-url }} -b ${{ github.event.inputs.manifest-branch }}
+          repo sync -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
+          
+          mkdir -p ${GITHUB_WORKSPACE}/device/${{ github.event.inputs.vendor-name }}/${{ github.event.inputs.device-name }}
+          
+      - name: Checkout
+        uses: actions/checkout@v4.1.1
+        with:
+          path: ${{ github.workspace }}/device/${{ github.event.inputs.vendor-name }}/${{ github.event.inputs.device-name }}
+      
+      - name: Setup cache
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/.ccache
+          sudo mkdir -p /mnt/ccache
+          
+          sudo mount --bind ${GITHUB_WORKSPACE}/.ccache /mnt/ccache
+          
+      - name: Load cache
+        id: load-ccache
+        uses: actions/cache/restore@v3
+        with:
+          path: ${{ github.workspace	}}/.ccache
+          key: ${{ github.event.inputs.vendor-name }}-${{ github.event.inputs.device-name }}-ccache
+      
+      - name: Build
+        run: |
+          cd ${GITHUB_WORKSPACE}/device/${{ github.event.inputs.vendor-name }}/${{ github.event.inputs.device-name }}
+          source build/envsetup.sh
+
+          export USE_CCACHE=1
+          export CCACHE_DIR=/mnt/ccache
+          ccache -M 10G
+
+          export ALLOW_MISSING_DEPENDENCIES='true'
+
+          rm -rf ${GITHUB_WORKSPACE}/out
+          lunch ${{ github.event.inputs.product }}_${{ github.event.inputs.device-name }}-${{ github.event.inputs.build-type }} && make clean && mka adbd ${{ github.event.inputs.target }}
+          
+      - name: Save cache
+        id: save-ccache
+        if: always()
+        uses: actions/cache/save@v3
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: ${{ steps.load-ccache.outputs.cache-primary-key }}
+      
+      - name: Upload to releases
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            out/target/product/${{ github.event.inputs.device-name }}/*.img
+            out/target/product/${{ github.event.inputs.device-name }}/*.zip
+            out/target/product/${{ github.event.inputs.device-name }}/*.tar
+          name: Recovery for ${{ github.event.inputs.device }}
+          tag_name: ${{ github.run_id }}
+          body: |
+            Build: ${{ github.event.inputs.target }}-${{ github.event.inputs.product }}
+            Device: ${{ github.event.inputs.device }}

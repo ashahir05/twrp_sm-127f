@@ -1,0 +1,179 @@
+version: 2.1
+
+parameters:
+  manifest-url:
+    type: string
+    default: "https://github.com/PitchBlackRecoveryProject/manifest_pb"
+  manifest-branch:
+    type: string
+    default: "android-12.1"
+  device-name:
+    type: string
+    default: "a12s"
+  vendor-name:
+    type: string
+    default: "samsung"
+  product:
+    type: string
+    default: "twrp"
+  build-type:
+    type: string
+    default: "eng"
+  target:
+    type: string
+    default: "recoveryimage"
+
+jobs:
+  build:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large
+
+    steps:
+      - checkout
+      - run: git submodule sync
+      - run: git submodule update --init
+        
+      - run:
+          name: Prepare environment
+          command: |
+            sudo apt update -y
+            sudo apt install -y linux-modules-extra-$(uname -r)
+            
+            sudo dd if=/dev/zero of=/swapfile bs=12MB count=1024
+            sudo chmod 600 /swapfile
+            sudo mkswap /swapfile
+            sudo swapon /swapfile
+
+            sudo modprobe zram
+            sudo zramctl /dev/zram0 --algorithm zstd --size 32G
+            sudo mkswap /dev/zram0
+            sudo swapon --priority 150 /dev/zram0
+            
+            sudo sysctl vm.swappiness=180
+            sudo sysctl vm.watermark_boost_factor=0
+            sudo sysctl vm.watermark_scale_factor=125
+            sudo sysctl vm.page-cluster=0
+            
+            sudo apt install -y \
+              gperf \
+              gcc-multilib \
+              gcc-10-multilib \
+              g++-multilib \
+              g++-10-multilib \
+              ccache \
+              libc6-dev \
+              lib32ncurses5-dev \
+              x11proto-core-dev \
+              libx11-dev \
+              tree \
+              lib32z-dev \
+              libgl1-mesa-dev \
+              libxml2-utils \
+              xsltproc \
+              bc \
+              openjdk-8-jdk \
+              lib32readline-dev \
+              lib32z1-dev \
+              liblz4-tool \
+              libncurses5-dev \
+              libncurses5 \
+              libtinfo5 \
+              libsdl1.2-dev \
+              libwxgtk3.0-gtk3-dev \
+              libxml2 \
+              lzop \
+              pngcrush \
+              schedtool \
+              squashfs-tools \
+              imagemagick \
+              libbz2-dev \
+              lzma \
+              ncftp \
+              qemu-user-static \
+              libstdc++-10-dev \
+              python2
+
+      - run:
+          name: Prepare sources
+          command: |
+            git config --global user.name "CI"
+            git config --global user.email "CI@xyz.com"
+            git config --global color.ui true
+
+            mkdir ~/bin
+            curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+            chmod a+x ~/bin/repo
+            sudo ln -sf ~/bin/repo /usr/bin/repo
+            
+            cd ${CIRCLE_WORKING_DIRECTORY}
+            repo init --depth=1 -u << pipeline.parameters.manifest-url >> -b << pipeline.parameters.manifest-branch >>
+            repo sync -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
+            
+      - run:
+          name: Setup cache
+          command: |
+            mkdir -p ${CIRCLE_WORKING_DIRECTORY}/.ccache
+            sudo mkdir -p /mnt/ccache
+            
+            sudo mount --bind ${CIRCLE_WORKING_DIRECTORY}/.ccache /mnt/ccache
+            
+      - restore_cache:
+          keys: << pipeline.parameters.vendor-name >>-<< pipeline.parameters.device-name >>-ccache
+
+      - run:
+          name: Build
+          no_output_timeout: "1h"
+          command: |
+            cd ${CIRCLE_WORKING_DIRECTORY}
+            source build/envsetup.sh
+
+            export USE_CCACHE=1
+            export CCACHE_DIR=/mnt/ccache
+            ccache -M 10G
+            
+            export ALLOW_MISSING_DEPENDENCIES=true
+
+            rm -rf ${CIRCLE_WORKING_DIRECTORY}/out
+            lunch << pipeline.parameters.product >>_<< pipeline.parameters.device-name >>-<< pipeline.parameters.build-type >> && make clean && mka adbd << pipeline.parameters.target >>
+            
+      - save_cache:
+          name: Save cache
+          when: always
+          key: << pipeline.parameters.vendor-name >>-<< pipeline.parameters.device-name >>-ccache
+          paths:
+            - .ccache
+
+      - persist_to_workspace:
+          root: out/target/product/
+          paths:
+            - << pipeline.parameters.device-name >>
+
+  publish:
+    docker:
+      - image: ubuntu:latest
+    resource_class: small
+
+    steps:
+      - attach_workspace:
+          at: releases
+      - run:
+          name: "Upload to releases"
+          command: |
+            sudo apt install -y golang-go
+            go get github.com/tcnksm/ghr
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_SHA1} releases/<< pipeline.parameters.device-name >>/*.img
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_SHA1} releases/<< pipeline.parameters.device-name >>/*.tar
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_SHA1} releases/<< pipeline.parameters.device-name >>/*.zip
+
+workflows:
+  build-recovery:
+    jobs:
+      - hold:
+          type: approval
+      - build:
+          requires:
+            - hold
+      - publish:
+          requires:
+            - build
