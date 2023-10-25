@@ -106,7 +106,7 @@ jobs:
             repo init --depth=1 -u << pipeline.parameters.manifest-url >> -b << pipeline.parameters.manifest-branch >>
             repo sync -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
             
-            mkdir -p ${CIRCLE_WORKING_DIRECTORY}/<< pipeline.parameters.vendor-name >>/<< pipeline.parameters.device-name >>
+            mkdir -p ${CIRCLE_WORKING_DIRECTORY}/device/<< pipeline.parameters.vendor-name >>/<< pipeline.parameters.device-name >>
             
       - run:
           name: Checkout
