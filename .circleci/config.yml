@@ -111,7 +111,7 @@ jobs:
       - run:
           name: Checkout
           command: |
-            git clone git@github.com:${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git ${CIRCLE_WORKING_DIRECTORY}/device/<< pipeline.parameters.vendor-name >>/<< pipeline.parameters.device-name >>
+            git clone << pipeline.project.git_url >> ${CIRCLE_WORKING_DIRECTORY}/device/<< pipeline.parameters.vendor-name >>/<< pipeline.parameters.device-name >>
             
       - run:
           name: Setup cache
