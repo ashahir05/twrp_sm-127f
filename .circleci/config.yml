@@ -111,7 +111,7 @@ jobs:
       - run:
           name: Checkout
           command: |
-            git clone << pipeline.project.git_url >> ${CIRCLE_WORKING_DIRECTORY}/device/<< pipeline.parameters.vendor-name >>/<< pipeline.parameters.device-name >>
+            git clone << pipeline.trigger_parameters.github_app.repo_url >> ${CIRCLE_WORKING_DIRECTORY}/device/<< pipeline.parameters.vendor-name >>/<< pipeline.parameters.device-name >>
             
       - run:
           name: Setup cache
@@ -164,10 +164,13 @@ jobs:
           command: |
             mkdir -p /tmp/ghr
             curl https://github.com/tcnksm/ghr/releases/download/v0.16.2/ghr_v0.16.2_linux_amd64.tar.gz > /tmp/ghr/ghr.tar.gz
+            
             tar -xf /tmp/ghr/ghr.tar.gz --strip-components=1 -C /tmp/ghr/
             chmod +x /tmp/ghr/ghr
+            
             mkdir -p /usr/local/bin
             mv /tmp/ghr/ghr /usr/local/bin/ghr
+            
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_SHA1} releases/<< pipeline.parameters.device-name >>/*.img
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_SHA1} releases/<< pipeline.parameters.device-name >>/*.tar
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_SHA1} releases/<< pipeline.parameters.device-name >>/*.zip
