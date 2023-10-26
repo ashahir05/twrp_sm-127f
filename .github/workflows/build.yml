@@ -33,6 +33,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     permissions:
       contents: write
+      actions: write
 
     steps:
       - name: Free disk space
@@ -144,7 +145,15 @@ jobs:
 
           rm -rf ${GITHUB_WORKSPACE}/out
           lunch ${{ github.event.inputs.product }}_${{ github.event.inputs.device-name }}-${{ github.event.inputs.build-type }} && make clean && mka adbd ${{ github.event.inputs.target }}
-          
+      
+      - name: Delete Previous Cache
+        if: ${{ steps.load-ccache.outputs.cache-hit }}
+        continue-on-error: true
+        run: |
+          sudo apt install -y gh
+          gh extension install actions/gh-actions-cache
+          gh actions-cache delete "$${{ steps.load-ccache.outputs.cache-primary-key }}" --confirm
+      
       - name: Save cache
         id: save-ccache
         if: always()
@@ -160,7 +169,7 @@ jobs:
             out/target/product/${{ github.event.inputs.device-name }}/*.img
             out/target/product/${{ github.event.inputs.device-name }}/*.zip
             out/target/product/${{ github.event.inputs.device-name }}/*.tar
-          name: Recovery for ${{ github.event.inputs.device }}
+          name: Recovery for ${{ github.event.inputs.vendor-name }}/${{ github.event.inputs.device-name }}
           tag_name: ${{ github.run_id }}
           body: |
             Build: ${{ github.event.inputs.target }}-${{ github.event.inputs.product }}
