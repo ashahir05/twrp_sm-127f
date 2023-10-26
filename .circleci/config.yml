@@ -162,8 +162,12 @@ jobs:
       - run:
           name: "Upload to releases"
           command: |
-            sudo apt install -y golang-go
-            go get github.com/tcnksm/ghr
+            mkdir -p /tmp/ghr
+            curl https://github.com/tcnksm/ghr/releases/download/v0.16.2/ghr_v0.16.2_linux_amd64.tar.gz > /tmp/ghr/ghr.tar.gz
+            tar -xf /tmp/ghr/ghr.tar.gz --strip-components=1 -C /tmp/ghr/
+            chmod +x /tmp/ghr/ghr
+            mkdir -p /usr/local/bin
+            mv /tmp/ghr/ghr /usr/local/bin/ghr
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_SHA1} releases/<< pipeline.parameters.device-name >>/*.img
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_SHA1} releases/<< pipeline.parameters.device-name >>/*.tar
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_SHA1} releases/<< pipeline.parameters.device-name >>/*.zip
