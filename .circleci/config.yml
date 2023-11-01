@@ -121,8 +121,16 @@ jobs:
 
             lunch twrp_<< pipeline.parameters.device-name >>-<< pipeline.parameters.build-type >> && make clean && mka adbd << pipeline.parameters.target >>
 
+      - run:
+          name: Prepare artifacts
+          command: |
+            mkdir -p ${CIRCLE_WORKING_DIRECTORY}/artifacts
+            mv ${CIRCLE_WORKING_DIRECTORY}/out/target/product/<< pipeline.parameters.device-name >>/*.img ${CIRCLE_WORKING_DIRECTORY}/artifacts/
+            mv ${CIRCLE_WORKING_DIRECTORY}/out/target/product/<< pipeline.parameters.device-name >>/*.zip ${CIRCLE_WORKING_DIRECTORY}/artifacts/
+            mv ${CIRCLE_WORKING_DIRECTORY}/out/target/product/<< pipeline.parameters.device-name >>/*.tar ${CIRCLE_WORKING_DIRECTORY}/artifacts/
+      
       - store_artifacts:
-          path: out/target/product/
+          path: artifacts
 
       - run:
           name: Debug
