@@ -3,7 +3,7 @@ version: 2.1
 parameters:
   manifest-url:
     type: string
-    default: "https://github.com/PitchBlackRecoveryProject/manifest_pb"
+    default: "https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp"
   manifest-branch:
     type: string
     default: "android-12.1"
