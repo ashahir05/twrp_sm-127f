@@ -102,7 +102,7 @@ jobs:
             git config --global user.email "ashahir-build-circleci@xyz.pqr"
             git config --global color.ui true
 
-            git clone 
+            git clone ${CIRCLE_REPOSITORY_URL} -b ${CIRCLE_BRANCH} device/<< pipeline.parameters.vendor-name >>/<< pipeline.parameters.device-name >>
 
             cd ${CIRCLE_WORKING_DIRECTORY}
 
