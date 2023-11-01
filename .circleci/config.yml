@@ -102,9 +102,12 @@ jobs:
             git config --global user.email "ashahir-build-circleci@xyz.pqr"
             git config --global color.ui true
 
+            mkdir -p ${CIRCLE_WORKING_DIRECTORY}/device/<< pipeline.parameters.vendor-name >>/<< pipeline.parameters.device-name >>
             cd ${CIRCLE_WORKING_DIRECTORY}
+            mv !(device) device/<< pipeline.parameters.vendor-name >>/<< pipeline.parameters.device-name >>
+
             repo init --depth=1 -u << pipeline.parameters.manifest-url >> -b << pipeline.parameters.manifest-branch >>
-            repo sync -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
+            repo sync -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune            
 
       - run:
           name: Build
