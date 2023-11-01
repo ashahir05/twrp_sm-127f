@@ -6,7 +6,7 @@ parameters:
     default: "https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp"
   manifest-branch:
     type: string
-    default: "android-12.1"
+    default: "twrp-12.1"
   vendor-name:
     type: string
     default: "samsung"
