@@ -116,7 +116,7 @@ jobs:
             export ALLOW_MISSING_DEPENDENCIES=true
             set -e
 
-            lunch twrp_<< pipeline.parameters.device-name >>-<< pipeline.parameters.build-type >> && make clean && mka << pipeline.parameters.target >>
+            lunch twrp_<< pipeline.parameters.device-name >>-<< pipeline.parameters.build-type >> && make clean && mka adbd << pipeline.parameters.target >>
 
       - persist_to_workspace:
           root: out/target/product
