@@ -102,12 +102,9 @@ jobs:
             git config --global user.email "ashahir-build-circleci@xyz.pqr"
             git config --global color.ui true
 
-            mkdir -p /tmp/src
-            mv ${CIRCLE_WORKING_DIRECTORY}/* /tmp/src
-            mkdir -p ${CIRCLE_WORKING_DIRECTORY}/device/<< pipeline.parameters.vendor-name >>/<< pipeline.parameters.device-name >>
+            git clone 
 
-            cd ${CIRCLE_WORKING_DIRECTORY}            
-            mv /tmp/src/* device/<< pipeline.parameters.vendor-name >>/<< pipeline.parameters.device-name >>/
+            cd ${CIRCLE_WORKING_DIRECTORY}
 
             repo init --depth=1 -u << pipeline.parameters.manifest-url >> -b << pipeline.parameters.manifest-branch >>
             repo sync -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune            
@@ -124,33 +121,9 @@ jobs:
 
             lunch twrp_<< pipeline.parameters.device-name >>-<< pipeline.parameters.build-type >> && make clean && mka adbd << pipeline.parameters.target >>
 
-      - persist_to_workspace:
-          root: out/target/product
-          paths:
-            - << pipeline.parameters.device-name >>
+      - store_artifacts:
+          path: out/target/product/
 
-      - run:
-          name: Debug
-          when: on_fail
-          command: tree -L 4 ${CIRCLE_WORKING_DIRECTORY}
-
-  publish:
-    machine:
-      image: ubuntu-2204:current
-    resource_class: medium
-
-    steps:
-      - attach_workspace:
-          at: releases
-      - run:
-          name: "Publish Release on GitHub"
-          command: |
-            go get github.com/tcnksm/ghr
-            VERSION=$(my-binary --version)
-            ghr -t ${GITHUB_TOKEN} -u ${GITHUB_USERNAME} -r ${GITHUB_REPO} -c ${CIRCLE_SHA1} -delete ${CIRCLE_SHA1} releases/<< pipeline.parameters.device-name >>/*.img
-            ghr -t ${GITHUB_TOKEN} -u ${GITHUB_USERNAME} -r ${GITHUB_REPO} -c ${CIRCLE_SHA1} -delete ${CIRCLE_SHA1} releases/<< pipeline.parameters.device-name >>/*.tar
-            ghr -t ${GITHUB_TOKEN} -u ${GITHUB_USERNAME} -r ${GITHUB_REPO} -c ${CIRCLE_SHA1} -delete ${CIRCLE_SHA1} releases/<< pipeline.parameters.device-name >>/*.zip
-            
       - run:
           name: Debug
           when: on_fail
