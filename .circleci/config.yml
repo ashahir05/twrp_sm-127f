@@ -86,6 +86,8 @@ jobs:
             sudo swapon /swapfile
 
             sudo modprobe zram
+            sudo swapoff /dev/zram0 || true
+            sudo zramctl --reset /dev/zram0 || true
             sudo zramctl /dev/zram0 --algorithm zstd --size 56G
             sudo mkswap /dev/zram0
             sudo swapon --priority 150 /dev/zram0
