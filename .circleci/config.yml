@@ -120,7 +120,7 @@ jobs:
             export ALLOW_MISSING_DEPENDENCIES=true
             set -e
 
-            lunch twrp_<< pipeline.parameters.device-name >>-<< pipeline.parameters.build-type >> && make clean && mka adbd << pipeline.parameters.target >>
+            lunch twrp_<< pipeline.parameters.device-name >>-<< pipeline.parameters.build-type >> && make clean && mka -j$(nproc --all) adbd << pipeline.parameters.target >>
 
       - run:
           name: Prepare artifacts
